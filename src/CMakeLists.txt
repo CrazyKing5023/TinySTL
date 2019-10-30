@@ -1,1 +1,1 @@
-set(NEW_MODULE_INC_DIR  "${CMAKE_CURRENT_SRC_}")
+add_subdirectory(test)
