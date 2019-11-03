@@ -8,6 +8,7 @@
 #include "allocator.h"
 #include "type_traits.h"
 #include "iterator.h"
+#include "uninitialized.h"
 #include <type_traits>
 
 namespace tinystl
@@ -17,16 +18,16 @@ namespace tinystl
     {
     public:
         //vector 的嵌套型别定义
-        typedef T                           value_type;
-        typedef T*                          iterator;
-        typedef const T*                    const_iterator;
-        typedef reverse_iterator<T*>        reverse_iterator;    
-        typedef reverse_iterator<const T*>  const_reverse_iterator;
-        typedef iterator                    pointer;
-        typedef T&                          reference;
-        typedef const T&                    const_reference;
-        typedef size_t                      size_type;
-        typedef ptrdiff_t                   difference_type;
+        typedef T                                       value_type;
+        typedef T*                                      iterator;
+        typedef const T*                                const_iterator;
+        typedef tinystl::reverse_iterator<T*>           reverse_iterator;    
+        typedef tinystl::reverse_iterator<const T*>     const_reverse_iterator;
+        typedef iterator                                pointer;
+        typedef T&                                      reference;
+        typedef const T&                                const_reference;
+        typedef size_t                                  size_type;
+        typedef ptrdiff_t                               difference_type;
 
     private:
         iterator begin_;
@@ -189,7 +190,189 @@ namespace tinystl
     /*****************************************************************************************/
     // helper function
 
-    
+    template <class T, class Alloc>
+    vector<T, Alloc>::~vector()
+    {
+        destroyAndDeallocateAll();
+    }
+    template <class T, class Alloc>
+    vector<T, Alloc>::vector(const size_type n)
+    {
+        allocateAndFillN(n, value_type());
+    }
+    template <class T, class Alloc>
+    vector<T, Alloc>::vector(const size_type n, const value_type& value)
+    {
+        allocateAndFillN(n ,value);
+    }
+    template <class T, class Alloc>
+    template <class InputIterator>
+    vector<T, Alloc>::vector(InputIterator first, InputIterator last)
+    {
+        vector_aux(first, last, typename std::is_integral<InputIterator>::type());
+    }
+    template <class T, class Alloc>
+    vector<T, Alloc>::vector(const vector& v) //copy construct function
+    {
+        allocateAndCopy(v.begin_, v.end_);
+    }
+    template <class T, class Alloc>
+    vector<T, Alloc>::vector(vector&& v) //right value reference 
+    {
+        begin_  = v.begin_;
+        end_    = v.end_;
+        endofStorage_ = v.endofStorage_;
+        v.begin_ = v.end_ = v.endofStorage_ = 0;
+    }
+    template <class T, class Alloc>
+    vector<T, Alloc>& vector<T, Alloc>::operator = (const vector& v)
+    {
+        if (this != &v)
+        {
+            allocateAndCopy(v.begin_, v.end_);
+        }
+        return *this;
+    }
+    template <class T, class Alloc>
+    vector<T, Alloc>& vector<T, Alloc>::operator = (vector&& v)
+    {
+        if (this != &v)
+        {
+            destroyAndDeallocateAll();
+            begin_ = v.begin_;
+            end_   = v.end_;
+            endofStorage_ = v.endofStorage_;
+            v.begin_ = v.end_ = v.endofStorage_ = 0;
+        }
+        return *this;
+    }
+
+    template <class T, class Alloc>
+    void vector<T, Alloc>::resize(size_type n, value_type val = value_type())
+    {
+        if (n < size())
+        {
+            dataAllocator::destroy(begin_ + n, end_);
+            end_ = begin_ + n;
+        }
+        else if(n > size() && n <= capacity())
+        {
+            auto lengthOfInsert = n - size();
+            end_ = tinystl::uninitialized_fill_n(begin_, lengthOfInsert, val);
+        }
+        else if(n > capacity())
+        {
+            auto lengthOfInsert = n - size();
+            T *newStart = dataAllocator::allocate(getNewCapacity(lengthOfInsert));
+            T *newFinish = tinystl::uninitialized_copy(begin(), end(), newStart);
+            newFinish = tinystl::uninitialized_fill_n(newFinish, lengthOfInsert, val);
+
+            destroyAndDeallocateAll();
+            begin_ = newStart;
+            end_ = newFinish;
+            endofStorage_ = begin_ + n;
+        }
+    }
+
+    template <class T, class Alloc>
+    void vector<T, Alloc>::reserve(size_type n)
+    {
+        if (n < capacity())
+            return;
+        T *newStart = dataAllocator::allocate(n);
+        T *newFinish = tinystl::uninitialized_copy(begin(), end(), newStart);
+        destroyAndDeallocateAll();
+        
+        begin_ = newStart;
+        end_    = newFinish;
+        endofStorage_ = begin_ + n;
+    }
+
+    template <class T, class Alloc>
+    typename vector<T, Alloc>::iterator vector<T, Alloc>::erase(iterator position)
+    {
+        return erase(position, position + 1);
+    }
+    template <class T, class Alloc>
+    typename vector<T, Alloc>::iterator vector<T, Alloc>::erase(iterator first, iterator last)
+    {
+        difference_type lenOfTail = end() - last;
+        difference_type lenOfRemoved = last - first;
+        end_ = end_ - lenOfRemoved;
+        for (; lenOfTail != 0; --lenOfTail)
+        {
+            auto temp = (last - lenOfRemoved);
+            *temp = *(last++);
+        }
+        return (first);
+    }
+
+    template <class T, class Alloc>
+    template <class InputIterator>
+    void vector<T, Alloc>::reallocateAndCopy(iterator position, InputIterator first, InputIterator last)
+    {
+        difference_type newCapacity = getNewCapacity(last - first);
+
+        T *newStart = dataAllocator::allocate(newCapacity);
+        T *newEndOfStorage = newStart + newCapacity;
+        T *newFinish = tinystl::uninitialized_copy(begin(), position, newStart);
+        newFinish = tinystl::uninitialized_copy(first, last, newFinish);
+        newFinish = tinystl::uninitialized_copy(position, end(), newFinish);
+
+        destroyAndDeallocateAll();
+        begin_ = newStart;
+        end_ = newFinish;
+        endofStorage_ = newEndOfStorage;
+    }
+
+    template <class T, class Alloc>
+    void vector<T, Alloc>::reallocateAndFillN(iterator position, const size_type& n, const value_type& val)
+    {
+        difference_type newCapacity = getNewCapacity(n);
+
+        T *newStart = dataAllocator::allocate(newCapacity);
+        T *newEndOfStorage = newStart + newCapacity;
+        T *newFinish = tinystl::uninitialized_copy(begin(), position, newStart);
+
+        newFinish = tinystl::uninitialized_fill_n(newFinish, n, val);
+        newFinish = tinystl::uninitialized_copy(position, end(), newFinish);
+
+        destroyAndDeallocateAll();
+        begin_ = newStart;
+        end_ = newFinish;
+        endofStorage_ = newEndOfStorage;
+    }
+    template <class T, class Alloc>
+    template <class InputIterator>
+    void vector<T, Alloc>::insert_aux(iterator position, InputIterator first, InputIterator last, std::false_type)
+    {
+        difference_type locationLeft = endofStorage_ - end_;
+
+        difference_type locationNeed = distance(first, last);
+
+        if (locationLeft >= locationNeed)
+        {
+            if (end_ - position > locationNeed)
+            {
+                tinystl::uninitialized_copy(end_ - locationNeed, end_, end_);
+                std::copy_backward(position, end_ - locationNeed, end_);
+                std::copy(first, last, position);
+            }
+            else
+            {
+                iterator temp = tinystl::uninitialized_copy(first + (end_ - position), last, end_);
+                tinystl::uninitialized_copy(position, end_, temp);
+                std::copy(first, first + (end_ - position), position);
+            }
+            end_ += locationNeed;
+            
+        }
+        else
+        {
+            reallocateAndCopy(position, first, last);
+        }
+    }
+
     
 }
 
