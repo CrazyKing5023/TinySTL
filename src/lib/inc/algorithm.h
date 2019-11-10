@@ -22,6 +22,7 @@ namespace tinystl
     {
         memset(first, static_cast<unsigned char>(value), last - first;
     }
-    
+
+
 }
 #endif

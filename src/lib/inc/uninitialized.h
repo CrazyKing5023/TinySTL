@@ -56,7 +56,7 @@ namespace tinystl
     void uninitialized_fill(ForwardIterator first, ForwardIterator last,
         const T& value)
     {
-        typedef typename _type_traits<T>::is_POD_type isPODType;
+        typedef typename __type_traits<T>::is_POD_type isPODType;
         _uninitialized_fill_aux(first, last, value, isPODType);
     }
     template <class ForwardIterator, class T>
@@ -86,7 +86,7 @@ namespace tinystl
 	template<class ForwardIterator, class Size, class T>
 	inline ForwardIterator uninitialized_fill_n(ForwardIterator first,
 		Size n, const T& x){
-		typedef typename _type_traits<T>::is_POD_type isPODType;
+		typedef typename __type_traits<T>::is_POD_type isPODType;
 		return _uninitialized_fill_n_aux(first, n, x, isPODType());
 	}
 	template<class ForwardIterator, class Size, class T>

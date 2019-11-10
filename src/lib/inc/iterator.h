@@ -1,6 +1,9 @@
 #ifndef _TINYSTL_ITERATOR_H_
 #define _TINYSTL_ITERATOR_H_
 
+#include <cstddef>
+#include "type_traits.h"
+
 namespace tinystl
 {
     struct InputIteratorTag{};
