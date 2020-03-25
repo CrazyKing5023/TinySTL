@@ -97,15 +97,9 @@ namespace tinystl
         return last - first;
     }
 
-    template <class RandomIterator>
-    inline typename iterator_traits<RandomIterator>::difference_type
-    __distance(RandomIterator first, RandomIterator last, RandomAccessIteratorTag )
-    {
-        return last - first;
-    }
 
     template <class InputIterator>
-    inline typename iterator_traits<InputIterator>::difference
+    inline typename iterator_traits<InputIterator>::difference_type
     distance(InputIterator first, InputIterator last)
     {
         typedef typename iterator_traits<InputIterator>::iterator_category category;
@@ -143,7 +137,7 @@ namespace tinystl
     }
 
     template <class RandomAccessIterator, class Distance>
-    inline void __advance(RandomAccessIterator& , Distance n, RandomAccessIteratorTag)
+    inline void __advance(RandomAccessIterator& i, Distance n, RandomAccessIteratorTag)
     {
         i += n;
     }
@@ -151,7 +145,7 @@ namespace tinystl
     template <class InputIterator, class Distance>
     inline void advance(InputIterator& i, Distance n)
     {
-        __advance(i, n, iterator_category());
+        __advance(i, n, iterator_category(i));
     }
 
 /*****************************************************************************************/
@@ -163,7 +157,7 @@ namespace tinystl
     {
     public:
         // 反向迭代器的五种相应型别
-        typedef typename iterator_traits<Iterator>::itetator_category itetator_category;
+        typedef typename iterator_traits<Iterator>::iterator_category iterator_category;
         typedef typename iterator_traits<Iterator>::value_type value_type;
 		typedef typename iterator_traits<Iterator>::difference_type difference_type;
 		typedef typename iterator_traits<Iterator>::pointer pointer;
@@ -232,7 +226,7 @@ namespace tinystl
             return self(current - n);
         }
 
-        self$ operator+=(difference_type n)
+        self operator+=(difference_type n)
         {
             current -= n;
             return *this;

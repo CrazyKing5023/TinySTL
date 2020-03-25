@@ -1,5 +1,9 @@
 #ifndef TINYSTL_ALLOCATOR_H__
 #define TINYSTL_ALLOCATOR_H__
+#include <cstdlib>
+#include <cassert>
+#include <new>
+#include <cstddef>
 
 namespace tinystl
 {
@@ -42,7 +46,7 @@ namespace tinystl
     {
         if (0 == n)
         {
-            return 0;
+            return nullptr;
         }
         return static_cast<T*>(::operator new(n * sizeof(T)));
     }
@@ -52,7 +56,7 @@ namespace tinystl
     {
         if (nullptr == ptr)
         {
-            return nullptr;
+            return ;
         }
         ::operator delete(ptr);
     }
@@ -62,7 +66,7 @@ namespace tinystl
     {
         if (nullptr == ptr)
         {
-            return nullptr;
+            return ;
         }
         ::operator delete(ptr);
     }
@@ -70,7 +74,7 @@ namespace tinystl
     template <class T>
     void allocator<T>::construct(T *ptr)
     {
-        new(ptr);
+        new(ptr)T();
     }
 
     template <class T>

@@ -43,10 +43,7 @@ namespace tinystl
             
         }
 
-        explicit vector(size_type n)
-        {
-
-        }
+        explicit vector(size_type n);
 
         vector(const size_type n, const value_type& value);
         
@@ -115,9 +112,9 @@ namespace tinystl
         }
         bool empty() const
         {
-            return begin_ = end_;
+            return (begin_ == end_);
         }
-        void resize(size_type n, value_type val = value_type());
+        void resize(size_type n, const value_type& val );
         void reserve(size_type n);
         void shrink_to_fit();
 
@@ -159,7 +156,7 @@ namespace tinystl
         //容器的空间配置器相关
         Alloc get_allocator()
         {
-            return dataAllocator;
+            return dataAllocator();
         }
 
     private:
@@ -183,10 +180,10 @@ namespace tinystl
         size_type getNewCapacity(size_type len) const;
 
     public:
-        template <class T, class Alloc>
-        friend bool operator == (const vector<T, Alloc>& v1, const vector<T, Alloc>& v2);
-        template <class T, class Alloc>
-        friend bool operator != (const vector<T, Alloc>& v1, const vector<T, Alloc>& v2);
+        template <class ElemType, class Alloctor>
+        friend bool operator == (const vector<ElemType, Alloctor>& v1, const vector<ElemType, Alloctor>& v2);
+        template <class ElemType, class Alloctor>
+        friend bool operator != (const vector<ElemType, Alloctor>& v1, const vector<ElemType, Alloctor>& v2);
     };
     /*****************************************************************************************/
     // helper function
@@ -249,7 +246,7 @@ namespace tinystl
     }
 
     template <class T, class Alloc>
-    void vector<T, Alloc>::resize(size_type n, value_type val = value_type())
+    void vector<T, Alloc>::resize(size_type n, const value_type& val)
     {
         if (n < size())
         {
@@ -387,7 +384,7 @@ namespace tinystl
             auto tempPtr = end() - 1;
             for (; tempPtr - position >= 0; --tempPtr)
             {
-                construct(tempPtr + locationNeed, *tempPtr);
+               allocator<T>::construct(tempPtr + locationNeed, *tempPtr);
             }
             tinystl::uninitialized_fill_n(position, n, value);
             end_ += locationNeed;
